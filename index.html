@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dactyl Game Clone</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+    }
+    #game-container {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin-top: 50px;
+    }
+    .bomb {
+      width: 100px;
+      height: 100px;
+      background-color: grey;
+      border: 2px solid black;
+      border-radius: 8px;
+      box-shadow: 1px 1px 5px #000;
+      cursor: pointer;
+    }
+    .bomb.lit {
+      background-color: red;
+    }
+    .bomb:active {
+      box-shadow: inset 1px 1px 5px #000;
+    }
+    #scoreboard {
+      margin: 20px 0;
+      font-size: 1.5em;
+    }
+    #restart {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #restart:hover {
+      background-color: #218838;
+    }
+    #game-over-box {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #game-over-box button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #game-over-box button:hover {
+      background-color: #c82333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dactyl Game Clone</h1>
+  <div id="scoreboard">
+    <div>Score: <span id="score">0</span></div>
+    <div>High Score: <span id="high-score">0</span></div>
+  </div>
+  <div id="game-container"></div>
+  <button id="restart">Start</button>
+
+  <div id="game-over-box">
+    <h2>Game Over!</h2>
+    <p>You let too many bombs light up!</p>
+    <button onclick="resetGame()">Try Again</button>
+  </div>
+
+  <script>
+    const gridContainer = document.getElementById('game-container');
+    const scoreDisplay = document.getElementById('score');
+    const highScoreDisplay = document.getElementById('high-score');
+    const restartButton = document.getElementById('restart');
+    const gameOverBox = document.getElementById('game-over-box');
+    const gridSize = 12; // 3x4 grid
+    const litBombs = new Set();
+    const bombElements = [];
+    let score = 0;
+    let highScore = localStorage.getItem('dactyl-high-score') || 0;
+    let gameInterval;
+    let delay = 1000; // Start with a 1-second interval
+    let lastLitBombIndex = null;
+
+    highScoreDisplay.textContent = highScore;
+
+    function createGrid() {
+      for (let i = 0; i < gridSize; i++) {
+        const bomb = document.createElement('div');
+        bomb.classList.add('bomb');
+        bomb.dataset.index = i;
+
+        bomb.addEventListener('click', () => {
+          if (bomb.classList.contains('lit')) {
+            bomb.classList.remove('lit');
+            litBombs.delete(i);
+            updateScore(1);
+          }
+        });
+
+        bombElements.push(bomb);
+        gridContainer.appendChild(bomb);
+      }
+    }
+
+    function selectRandomBomb() {
+      const unlitBombs = bombElements.filter((bomb, index) => 
+        !bomb.classList.contains('lit') && index !== lastLitBombIndex
+      );
+      if (unlitBombs.length === 0) return;
+
+      const randomIndex = Math.floor(Math.random() * unlitBombs.length);
+      const bomb = unlitBombs[randomIndex];
+      const index = parseInt(bomb.dataset.index, 10);
+      bomb.classList.add('lit');
+      litBombs.add(index);
+      lastLitBombIndex = index;
+
+      if (litBombs.size >= 3) {
+        endGame();
+      }
+    }
+
+    function updateScore(amount) {
+      score += amount;
+      scoreDisplay.textContent = score;
+      if (score > highScore) {
+        highScore = score;
+        highScoreDisplay.textContent = highScore;
+        localStorage.setItem('dactyl-high-score', highScore);
+      }
+      delay *= 0.999; // Increase speed by 0.1% every bomb defusal
+    }
+
+    function startGame() {
+      delay = 1000; // Reset game speed
+      clearInterval(gameInterval);
+      gameInterval = setInterval(() => {
+        selectRandomBomb();
+        clearInterval(gameInterval);
+        startGame();
+      }, delay);
+    }
+
+    function endGame() {
+      clearInterval(gameInterval);
+      litBombs.forEach(index => bombElements[index].classList.add('lit'));
+      gameOverBox.style.display = 'flex';
+    }
+
+    function resetGame() {
+      litBombs.clear();
+      score = 0;
+      delay = 1000;
+      scoreDisplay.textContent = score;
+      bombElements.forEach(bomb => bomb.classList.remove('lit'));
+      gameOverBox.style.display = 'none';
+    }
+
+    restartButton.addEventListener('click', () => {
+      resetGame();
+      startGame();
+      restartButton.textContent = 'Restart';
+    });
+
+    createGrid();
+  </script>
+</body>
+</html>
