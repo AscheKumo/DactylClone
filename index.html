@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<link rel="manifest" href="/manifest.json">
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dactyl (Recreation)</title>
+
+<link rel="manifest" href="/manifest.json">
 
 <link rel="preload" as="image" href="Bomb%20UnLit.png">
 <link rel="preload" as="image" href="Bomb%20Lit.png">
@@ -21,12 +22,12 @@
     --seg-on:#e61b1b;
     --seg-stroke:#0b0b0b;
   }
-  
-  html, body {
-  height: 100%;
-  overflow: hidden;          /* stops scrolling */
-  overscroll-behavior: none; /* disables pull-to-refresh / bounce in many browsers */
-  touch-action: none;        /* disables touch panning/zooming on the page */
+
+  html, body{
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:none;
   }
 
   *{box-sizing:border-box;}
@@ -80,7 +81,6 @@
     margin-bottom:4px;
   }
 
-  /* 5 digits: viewBox width 216 */
   .seg{
     width:108px;
     height:34px;
@@ -94,7 +94,7 @@
     align-items:center;
   }
 
-  select,button{
+  select,button,a.installBtn{
     background:#111;
     color:#fff;
     border:1px solid #333;
@@ -116,7 +116,6 @@
     border:1px solid #1d1d1d;
   }
 
-  /* PNG-based bombs */
   .bomb{
     width:100%;
     aspect-ratio:1 / 1;
@@ -154,7 +153,48 @@
     opacity:.55;
   }
 
-  /* Mobile-only improvements; desktop untouched. */
+  /* Install bar */
+  .installBar{
+    margin-top:12px;
+    padding:10px;
+    background:var(--panel);
+    border:1px solid #222;
+    border-radius:10px;
+    display:none; /* shown via JS when appropriate */
+    text-align:left;
+  }
+
+  .installRow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+  }
+
+  .installText{
+    font-size:12px;
+    opacity:.8;
+    line-height:1.3;
+  }
+
+  a.installBtn{
+    text-decoration:none;
+    display:inline-block;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  a.installBtn:hover{
+    filter:brightness(1.08);
+  }
+
+  .installNote{
+    margin-top:6px;
+    font-size:11px;
+    opacity:.55;
+  }
+
   @media (max-width: 420px){
     body{ padding:12px; align-items:flex-start; }
     .container{ width:100%; margin-top:10px; }
@@ -178,6 +218,16 @@
     .grid{
       gap:8px;
       padding:8px;
+    }
+
+    .installRow{
+      flex-direction:column;
+      align-items:stretch;
+    }
+
+    a.installBtn{
+      width:100%;
+      text-align:center;
     }
   }
 </style>
@@ -215,6 +265,21 @@
 
   <div class="status" id="status">Tap the lit bombs before they explode.</div>
   <div class="hint">Hard/Insane: touching an unlit bomb explodes. Bombs defuse on touch-down.</div>
+
+  <!-- Install APK (download + install prompt handled by Android) -->
+  <div class="installBar" id="installBar">
+    <div class="installRow">
+      <div class="installText">
+        Install the Android app (APK).
+      </div>
+      <a class="installBtn" id="apkBtn" href="/app-release-signed.apk" download="app-release-signed.apk">
+        Download APK
+      </a>
+    </div>
+    <div class="installNote">
+      Android will ask you to approve installing from your browser / downloads. This cannot be automated by a webpage.
+    </div>
+  </div>
 </div>
 
 <script>
@@ -225,11 +290,19 @@
   })();
 
   // Prevent mobile scroll/drag gestures
-document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
-
+  document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
   // Prevent long-press context menu from interfering
   document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // Show install bar primarily on Android browsers
+  (function setupInstallBar(){
+    const bar = document.getElementById("installBar");
+    const ua = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(ua);
+    // If you want it visible everywhere, replace with: bar.style.display = "block";
+    if (isAndroid) bar.style.display = "block";
+  })();
 
   const grid = document.getElementById("grid");
   const statusText = document.getElementById("status");
@@ -279,7 +352,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
   let popPoolIndex = 0;
 
   function initPopAudio(){
-    // Reset pool each run; init after user gesture (Start) for mobile autoplay rules
     popPool = [];
     popPoolIndex = 0;
     for (let i = 0; i < 4; i++){
@@ -416,7 +488,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
       div.className = "bomb";
       div.dataset.index = i;
 
-      // Defuse on touch-down (pointerdown)
       div.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         tapBomb(i);
@@ -460,7 +531,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
     stopGame();
     createGrid();
 
-    // Init audio after user gesture (Start)
     initPopAudio();
 
     loadHighScoreForSelected();
@@ -488,7 +558,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
     bomb.el.classList.add("active");
     activeBombs.push(bomb);
 
-    // Play pop when fuse starts (bomb lights)
     playPop();
 
     lastSpawnIndex = bomb.index;
@@ -502,7 +571,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
     const bomb = bombs[index];
     if (!running) return;
 
-    // If lit, defuse as normal
     if (bomb.active) {
       clearTimeout(bomb.timer);
       bomb.active = false;
@@ -518,7 +586,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
       return;
     }
 
-    // Hard/Insane tapping an unlit bomb = instant loss
     if (difficultySelect.value === "hard" || difficultySelect.value === "insane") {
       explode(bomb);
     }
@@ -541,7 +608,6 @@ document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: fal
 
   btnStart.addEventListener("click", startGame);
 
-  // init
   createGrid();
   loadHighScoreForSelected();
   updateScores();
