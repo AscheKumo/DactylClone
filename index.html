@@ -7,6 +7,7 @@
 
 <link rel="preload" as="image" href="Bomb%20UnLit.png">
 <link rel="preload" as="image" href="Bomb%20Lit.png">
+<link rel="preload" as="audio" href="pop.mp3">
 
 <style>
   :root{
@@ -261,6 +262,29 @@
     localStorage.setItem(hsKey(diff), String(value));
   }
 
+  // ---------------- Audio: pop.mp3 on fuse start ----------------
+  let popPool = [];
+  let popPoolIndex = 0;
+
+  function initPopAudio(){
+    // Reset pool each run; init after user gesture (Start) for mobile autoplay rules
+    popPool = [];
+    popPoolIndex = 0;
+    for (let i = 0; i < 4; i++){
+      const a = new Audio("pop.mp3");
+      a.volume = 0.6;
+      popPool.push(a);
+    }
+  }
+
+  function playPop(){
+    if (!popPool.length) return;
+    const a = popPool[popPoolIndex];
+    popPoolIndex = (popPoolIndex + 1) % popPool.length;
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  }
+
   // ---------------- 7-seg SVG renderer ----------------
   const segMap = {
     "0":[1,1,1,1,1,1,0],
@@ -424,6 +448,9 @@
     stopGame();
     createGrid();
 
+    // Init audio after user gesture (Start)
+    initPopAudio();
+
     loadHighScoreForSelected();
     score = 0;
     updateScores();
@@ -448,6 +475,9 @@
     bomb.el.classList.remove("explode");
     bomb.el.classList.add("active");
     activeBombs.push(bomb);
+
+    // Play pop when fuse starts (bomb lights)
+    playPop();
 
     lastSpawnIndex = bomb.index;
 
@@ -476,7 +506,7 @@
       return;
     }
 
-    // NEW RULE: Hard/Insane tapping an unlit bomb = instant loss
+    // Hard/Insane tapping an unlit bomb = instant loss
     if (difficultySelect.value === "hard" || difficultySelect.value === "insane") {
       explode(bomb);
     }
