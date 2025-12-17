@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dactyl (Recreation)</title>
 
-<!-- Preload bomb images (helps Opera GX + removes first-swap flicker) -->
 <link rel="preload" as="image" href="Bomb%20UnLit.png">
 <link rel="preload" as="image" href="Bomb%20Lit.png">
 
@@ -108,7 +107,7 @@
     border:1px solid #1d1d1d;
   }
 
-  /* PNG-based bombs (URL-encoded spaces for Opera reliability) */
+  /* PNG-based bombs */
   .bomb{
     width:100%;
     aspect-ratio:1 / 1;
@@ -204,11 +203,11 @@
   <div class="grid" id="grid" aria-label="Bomb grid"></div>
 
   <div class="status" id="status">Tap the lit bombs before they explode.</div>
-  <div class="hint">Rule: you can survive about 3 active bombs; the 4th triggers the oldest explosion.</div>
+  <div class="hint">Speed ramps up over time, but is capped so it never becomes infinitely fast.</div>
 </div>
 
 <script>
-  // Extra preload (belt + suspenders; helps when opened as file://)
+  // Preload (helps when opened as file:// and avoids first-swap delays)
   (function preloadImages(){
     const a = new Image(); a.src = "Bomb%20UnLit.png";
     const b = new Image(); b.src = "Bomb%20Lit.png";
@@ -227,19 +226,26 @@
 
   let bombs = [];
   let activeBombs = [];
-  let gameInterval = null;
+
   let running = false;
+  let spawnTimeout = null;
 
   let score = 0;
   let highScore = 0;
 
+  // Prevent spawning on the immediately previous spawn cell.
   let lastSpawnIndex = -1;
 
+  // Time/pace ramp state
+  let runStartMs = 0;
+
+  // Difficulty now includes ramp + caps (min values).
+  // rampPerPoint: multiplied each score; <1 makes timings shrink.
   const DIFFICULTY = {
-    easy:   { spawn: 1200, fuse: 3600 },
-    normal: { spawn: 900,  fuse: 2800 },
-    hard:   { spawn: 650,  fuse: 2200 },
-    insane: { spawn: 500,  fuse: 1800 }
+    easy:   { spawnStart: 1200, fuseStart: 3600, spawnMin: 520,  fuseMin: 1600, rampPerPoint: 0.992 },
+    normal: { spawnStart: 900,  fuseStart: 2800, spawnMin: 420,  fuseMin: 1300, rampPerPoint: 0.991 },
+    hard:   { spawnStart: 650,  fuseStart: 2200, spawnMin: 340,  fuseMin: 1050, rampPerPoint: 0.990 },
+    insane: { spawnStart: 500,  fuseStart: 1800, spawnMin: 280,  fuseMin: 900,  rampPerPoint: 0.989 }
   };
 
   function hsKey(diff){ return `dactyl_highscore_${diff}`; }
@@ -254,7 +260,7 @@
     localStorage.setItem(hsKey(diff), String(value));
   }
 
-  // 7-seg SVG renderer
+  // ---------------- 7-seg SVG renderer ----------------
   const segMap = {
     "0":[1,1,1,1,1,1,0],
     "1":[0,1,1,0,0,0,0],
@@ -361,6 +367,7 @@
     render7Seg(segHigh, highScore);
   }
 
+  // ---------------- Game ----------------
   function createGrid() {
     grid.innerHTML = "";
     bombs = [];
@@ -378,6 +385,37 @@
     }
   }
 
+  function stopGame() {
+    running = false;
+    clearTimeout(spawnTimeout);
+    spawnTimeout = null;
+    bombs.forEach(b => clearTimeout(b.timer));
+    activeBombs = [];
+  }
+
+  // Compute current timings with ramp + caps.
+  // Uses score as the ramp driver (simple, predictable, “arcade”).
+  function getCurrentTimings() {
+    const d = DIFFICULTY[difficultySelect.value];
+    const factor = Math.pow(d.rampPerPoint, score); // decreases over time
+    const spawn = Math.max(d.spawnMin, Math.round(d.spawnStart * factor));
+    const fuse  = Math.max(d.fuseMin,  Math.round(d.fuseStart  * factor));
+    return { spawn, fuse };
+  }
+
+  function scheduleNextSpawn() {
+    if (!running) return;
+    const { spawn } = getCurrentTimings();
+
+    clearTimeout(spawnTimeout);
+    spawnTimeout = setTimeout(() => {
+      if (!running) return;
+      const { fuse } = getCurrentTimings();
+      activateBomb(fuse);
+      scheduleNextSpawn();
+    }, spawn);
+  }
+
   function startGame() {
     stopGame();
     createGrid();
@@ -387,18 +425,13 @@
     updateScores();
 
     running = true;
+    runStartMs = performance.now();
     statusText.textContent = "Stay alive.";
 
-    const diff = DIFFICULTY[difficultySelect.value];
-    gameInterval = setInterval(() => activateBomb(diff.fuse), diff.spawn);
-    activateBomb(diff.fuse);
-  }
-
-  function stopGame() {
-    running = false;
-    clearInterval(gameInterval);
-    bombs.forEach(b => clearTimeout(b.timer));
-    activeBombs = [];
+    // Start immediately, then ramp via scheduleNextSpawn()
+    const { fuse } = getCurrentTimings();
+    activateBomb(fuse);
+    scheduleNextSpawn();
   }
 
   function activateBomb(fuseTime) {
@@ -418,6 +451,7 @@
 
     bomb.timer = setTimeout(() => explode(bomb), fuseTime);
 
+    // Enforce “only 3 bombs survivable”
     if (activeBombs.length >= 4) explode(activeBombs[0]);
   }
 
@@ -431,6 +465,7 @@
     activeBombs = activeBombs.filter(b => b !== bomb);
 
     score += 1;
+
     if (score > highScore) {
       highScore = score;
       saveHighScoreForSelected(highScore);
@@ -450,6 +485,7 @@
     stopGame();
   }
 
+  // Difficulty changes update HIGH immediately (and keep current score display)
   difficultySelect.addEventListener("change", () => {
     loadHighScoreForSelected();
     updateScores();
@@ -457,6 +493,7 @@
 
   btnStart.addEventListener("click", startGame);
 
+  // init
   createGrid();
   loadHighScoreForSelected();
   updateScores();
