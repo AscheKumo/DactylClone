@@ -20,6 +20,13 @@
     --seg-on:#e61b1b;
     --seg-stroke:#0b0b0b;
   }
+  
+  html, body {
+  height: 100%;
+  overflow: hidden;          /* stops scrolling */
+  overscroll-behavior: none; /* disables pull-to-refresh / bounce in many browsers */
+  touch-action: none;        /* disables touch panning/zooming on the page */
+  }
 
   *{box-sizing:border-box;}
   body{
@@ -215,6 +222,10 @@
     const a = new Image(); a.src = "Bomb%20UnLit.png";
     const b = new Image(); b.src = "Bomb%20Lit.png";
   })();
+
+  // Prevent mobile scroll/drag gestures
+document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
 
   // Prevent long-press context menu from interfering
   document.addEventListener("contextmenu", (e) => e.preventDefault());
