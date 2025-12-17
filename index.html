@@ -117,7 +117,9 @@
     background-position:center;
     border-radius:0;
     transition:transform .06s ease, filter .08s ease;
-    touch-action:manipulation;
+    touch-action:manipulation; /* important for pointerdown feel */
+    user-select:none;
+    -webkit-user-select:none;
   }
 
   .bomb:active{ transform:scale(.96); }
@@ -203,15 +205,18 @@
   <div class="grid" id="grid" aria-label="Bomb grid"></div>
 
   <div class="status" id="status">Tap the lit bombs before they explode.</div>
-  <div class="hint">Speed ramps up over time, but is capped so it never becomes infinitely fast.</div>
+  <div class="hint">Bombs defuse on touch-down (pointerdown), not on lift-up.</div>
 </div>
 
 <script>
-  // Preload (helps when opened as file:// and avoids first-swap delays)
+  // Preload images (helps file:// and avoids first-swap delays)
   (function preloadImages(){
     const a = new Image(); a.src = "Bomb%20UnLit.png";
     const b = new Image(); b.src = "Bomb%20Lit.png";
   })();
+
+  // Prevent long-press context menu from interfering
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
 
   const grid = document.getElementById("grid");
   const statusText = document.getElementById("status");
@@ -236,10 +241,7 @@
   // Prevent spawning on the immediately previous spawn cell.
   let lastSpawnIndex = -1;
 
-  // Time/pace ramp state
-  let runStartMs = 0;
-
-  // Difficulty now includes ramp + caps (min values).
+  // Difficulty includes ramp + caps
   // rampPerPoint: multiplied each score; <1 makes timings shrink.
   const DIFFICULTY = {
     easy:   { spawnStart: 1200, fuseStart: 3600, spawnMin: 520,  fuseMin: 1600, rampPerPoint: 0.992 },
@@ -378,7 +380,14 @@
       const div = document.createElement("div");
       div.className = "bomb";
       div.dataset.index = i;
-      div.addEventListener("click", () => tapBomb(i));
+
+      // IMPORTANT CHANGE:
+      // Defuse on touch-down (pointerdown), not click (touch-up).
+      div.addEventListener("pointerdown", (e) => {
+        e.preventDefault(); // prevents delayed/ghost click behaviors
+        tapBomb(i);
+      });
+
       grid.appendChild(div);
 
       bombs.push({ el: div, active:false, timer:null, index:i });
@@ -394,7 +403,6 @@
   }
 
   // Compute current timings with ramp + caps.
-  // Uses score as the ramp driver (simple, predictable, “arcade”).
   function getCurrentTimings() {
     const d = DIFFICULTY[difficultySelect.value];
     const factor = Math.pow(d.rampPerPoint, score); // decreases over time
@@ -425,7 +433,6 @@
     updateScores();
 
     running = true;
-    runStartMs = performance.now();
     statusText.textContent = "Stay alive.";
 
     // Start immediately, then ramp via scheduleNextSpawn()
@@ -485,7 +492,6 @@
     stopGame();
   }
 
-  // Difficulty changes update HIGH immediately (and keep current score display)
   difficultySelect.addEventListener("change", () => {
     loadHighScoreForSelected();
     updateScores();
