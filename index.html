@@ -1,197 +1,478 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dactyl Game Clone</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-      background-color: #f0f0f0;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dactyl (Recreation)</title>
+
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --panel:#0f0f0f;
+    --grid-bg:#111;
+    --text:#eaeaea;
+
+    --seg-off:#1a1a1a;
+    --seg-on:#e61b1b;
+    --seg-stroke:#0b0b0b;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:18px;
+  }
+
+  .container{
+    width:min(440px, 96vw);
+    text-align:center;
+  }
+
+  h1{
+    margin:0 0 10px;
+    font-weight:650;
+    letter-spacing:3px;
+  }
+
+  .topbar{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid #222;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+  }
+
+  .scores{
+    display:flex;
+    gap:12px;
+    align-items:flex-end;
+  }
+
+  .scoreBox{
+    text-align:left;
+  }
+
+  .label{
+    font-size:11px;
+    opacity:.75;
+    letter-spacing:1px;
+    margin-bottom:4px;
+  }
+
+  /* 5 digits: viewBox width 216 */
+  .seg{
+    width:108px;
+    height:34px;
+    display:block;
+  }
+
+  .controls{
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+    align-items:center;
+  }
+
+  select,button{
+    background:#111;
+    color:#fff;
+    border:1px solid #333;
+    padding:8px 10px;
+    font-size:14px;
+    border-radius:8px;
+  }
+
+  button{ cursor:pointer; }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(4,1fr);
+    gap:10px;
+    background:var(--grid-bg);
+    padding:10px;
+    border-radius:12px;
+    border:1px solid #1d1d1d;
+  }
+
+  /* PNG-based bombs */
+  .bomb{
+    width:100%;
+    aspect-ratio:1 / 1;
+    background-image:url("Bomb UnLit.png");
+    background-size:contain;
+    background-repeat:no-repeat;
+    background-position:center;
+    border-radius:0;
+    transition:transform .06s ease, filter .08s ease;
+    touch-action:manipulation;
+  }
+
+  .bomb:active{ transform:scale(.96); }
+
+  .bomb.active{
+    background-image:url("Bomb Lit.png");
+  }
+
+  .bomb.explode{
+    background-image:url("Bomb Lit.png");
+    filter:brightness(1.4);
+  }
+
+  .status{
+    margin-top:10px;
+    font-size:14px;
+    opacity:.85;
+  }
+
+  .hint{
+    margin-top:6px;
+    font-size:12px;
+    opacity:.55;
+  }
+
+  /* Mobile-only improvements; desktop untouched. */
+  @media (max-width: 420px){
+    body{ padding:12px; align-items:flex-start; }
+    .container{ width:100%; margin-top:10px; }
+
+    .topbar{
+      flex-direction:column;
+      align-items:stretch;
+      gap:10px;
     }
-    #game-container {
-      display: grid;
-      grid-template-columns: repeat(4, 100px);
-      grid-gap: 10px;
-      justify-content: center;
-      margin-top: 50px;
+
+    .scores{
+      justify-content:space-between;
     }
-    .bomb {
-      width: 100px;
-      height: 100px;
-      background-color: grey;
-      border: 2px solid black;
-      border-radius: 8px;
-      box-shadow: 1px 1px 5px #000;
-      cursor: pointer;
+
+    .controls{
+      justify-content:space-between;
     }
-    .bomb.lit {
-      background-color: red;
+
+    select,button{
+      width:49%;
     }
-    .bomb:active {
-      box-shadow: inset 1px 1px 5px #000;
+
+    .seg{
+      width:104px; /* tiny trim for narrow screens */
+      height:34px;
     }
-    #scoreboard {
-      margin: 20px 0;
-      font-size: 1.5em;
+
+    .grid{
+      gap:8px;
+      padding:8px;
     }
-    #restart {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #restart:hover {
-      background-color: #218838;
-    }
-    #game-over-box {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    #game-over-box button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
-      background-color: #dc3545;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #game-over-box button:hover {
-      background-color: #c82333;
-    }
-  </style>
+  }
+</style>
 </head>
+
 <body>
-  <h1>Dactyl Game Clone</h1>
-  <div id="scoreboard">
-    <div>Score: <span id="score">0</span></div>
-    <div>High Score: <span id="high-score">0</span></div>
+<div class="container">
+  <h1>DACTYL</h1>
+
+  <div class="topbar">
+    <div class="scores">
+      <div class="scoreBox">
+        <div class="label">CURRENT</div>
+        <svg class="seg" id="segCurrent" viewBox="0 0 216 68" preserveAspectRatio="xMinYMid meet" aria-label="Current score"></svg>
+      </div>
+
+      <div class="scoreBox">
+        <div class="label">HIGH</div>
+        <svg class="seg" id="segHigh" viewBox="0 0 216 68" preserveAspectRatio="xMinYMid meet" aria-label="High score"></svg>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+        <option value="insane">Insane</option>
+      </select>
+      <button id="btnStart">Start</button>
+    </div>
   </div>
-  <div id="game-container"></div>
-  <button id="restart">Start</button>
 
-  <div id="game-over-box">
-    <h2>Game Over!</h2>
-    <p>You let too many bombs light up!</p>
-    <button onclick="resetGame()">Try Again</button>
-  </div>
+  <div class="grid" id="grid" aria-label="Bomb grid"></div>
 
-  <script>
-    const gridContainer = document.getElementById('game-container');
-    const scoreDisplay = document.getElementById('score');
-    const highScoreDisplay = document.getElementById('high-score');
-    const restartButton = document.getElementById('restart');
-    const gameOverBox = document.getElementById('game-over-box');
-    const gridSize = 12; // 3x4 grid
-    const litBombs = new Set();
-    const bombElements = [];
-    let score = 0;
-    let highScore = localStorage.getItem('dactyl-high-score') || 0;
-    let gameInterval;
-    let delay = 1000; // Start with a 1-second interval
-    let lastLitBombIndex = null;
+  <div class="status" id="status">Tap the lit bombs before they explode.</div>
+  <div class="hint">Rule: you can survive about 3 active bombs; the 4th triggers the oldest explosion.</div>
+</div>
 
-    highScoreDisplay.textContent = highScore;
+<script>
+  const grid = document.getElementById("grid");
+  const statusText = document.getElementById("status");
+  const difficultySelect = document.getElementById("difficulty");
+  const btnStart = document.getElementById("btnStart");
 
-    function createGrid() {
-      for (let i = 0; i < gridSize; i++) {
-        const bomb = document.createElement('div');
-        bomb.classList.add('bomb');
-        bomb.dataset.index = i;
+  const segCurrent = document.getElementById("segCurrent");
+  const segHigh = document.getElementById("segHigh");
 
-        bomb.addEventListener('click', () => {
-          if (bomb.classList.contains('lit')) {
-            bomb.classList.remove('lit');
-            litBombs.delete(i);
-            updateScore(1);
-          }
-        });
+  const GRID_SIZE = 12;
+  const DIGITS = 5;
 
-        bombElements.push(bomb);
-        gridContainer.appendChild(bomb);
-      }
+  let bombs = [];
+  let activeBombs = [];
+  let gameInterval = null;
+  let running = false;
+
+  let score = 0;
+  // per-difficulty high score
+  let highScore = 0;
+
+  // Prevent spawning on the immediately previous spawn cell.
+  let lastSpawnIndex = -1;
+
+  const DIFFICULTY = {
+    easy:   { spawn: 1200, fuse: 3600 },
+    normal: { spawn: 900,  fuse: 2800 },
+    hard:   { spawn: 650,  fuse: 2200 },
+    insane: { spawn: 500,  fuse: 1800 }
+  };
+
+  function hsKey(diff){ return `dactyl_highscore_${diff}`; }
+
+  function loadHighScoreForSelected(){
+    const diff = difficultySelect.value;
+    highScore = Number(localStorage.getItem(hsKey(diff)) || "0");
+  }
+
+  function saveHighScoreForSelected(value){
+    const diff = difficultySelect.value;
+    localStorage.setItem(hsKey(diff), String(value));
+  }
+
+  // ---------------- 7-seg SVG renderer ----------------
+  const segMap = {
+    "0":[1,1,1,1,1,1,0],
+    "1":[0,1,1,0,0,0,0],
+    "2":[1,1,0,1,1,0,1],
+    "3":[1,1,1,1,0,0,1],
+    "4":[0,1,1,0,0,1,1],
+    "5":[1,0,1,1,0,1,1],
+    "6":[1,0,1,1,1,1,1],
+    "7":[1,1,1,0,0,0,0],
+    "8":[1,1,1,1,1,1,1],
+    "9":[1,1,1,1,0,1,1],
+    " ":[0,0,0,0,0,0,0]
+  };
+
+  function render7Seg(svgEl, value, digits = DIGITS){
+    const s = String(Math.max(0, value)).slice(-digits).padStart(digits, "0");
+    svgEl.innerHTML = "";
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const on = rootStyle.getPropertyValue("--seg-on").trim();
+    const off = rootStyle.getPropertyValue("--seg-off").trim();
+    const stroke = rootStyle.getPropertyValue("--seg-stroke").trim();
+
+    const cellW = 40, cellH = 68, pad = 6, thick = 7;
+    const gap = 4;
+
+    function poly(points, fill){
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      p.setAttribute("points", points.map(pt => pt.join(",")).join(" "));
+      p.setAttribute("fill", fill);
+      p.setAttribute("stroke", stroke);
+      p.setAttribute("stroke-width", "2");
+      p.setAttribute("stroke-linejoin", "round");
+      return p;
     }
 
-    function selectRandomBomb() {
-      const unlitBombs = bombElements.filter((bomb, index) => 
-        !bomb.classList.contains('lit') && index !== lastLitBombIndex
-      );
-      if (unlitBombs.length === 0) return;
+    function digitGroup(ch, offsetX){
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("transform", `translate(${offsetX},0)`);
 
-      const randomIndex = Math.floor(Math.random() * unlitBombs.length);
-      const bomb = unlitBombs[randomIndex];
-      const index = parseInt(bomb.dataset.index, 10);
-      bomb.classList.add('lit');
-      litBombs.add(index);
-      lastLitBombIndex = index;
+      const seg = segMap[ch] || segMap[" "];
 
-      if (litBombs.size >= 3) {
-        endGame();
-      }
+      const x0 = pad, x1 = cellW - pad;
+      const y0 = pad, y1 = cellH - pad;
+      const mid = Math.floor(cellH / 2);
+
+      const A = [
+        [x0+thick, y0],
+        [x1-thick, y0],
+        [x1-thick-gap, y0+thick],
+        [x0+thick+gap, y0+thick]
+      ];
+      const G = [
+        [x0+thick+gap, mid - Math.floor(thick/2)],
+        [x1-thick-gap, mid - Math.floor(thick/2)],
+        [x1-thick-2*gap, mid + Math.floor(thick/2)],
+        [x0+thick+2*gap, mid + Math.floor(thick/2)]
+      ];
+      const D = [
+        [x0+thick+gap, y1-thick],
+        [x1-thick-gap, y1-thick],
+        [x1-thick, y1],
+        [x0+thick, y1]
+      ];
+
+      const F = [
+        [x0, y0+thick],
+        [x0+thick, y0+thick+gap],
+        [x0+thick, mid - gap],
+        [x0, mid - gap - thick]
+      ];
+      const B = [
+        [x1-thick, y0+thick+gap],
+        [x1, y0+thick],
+        [x1, mid - gap - thick],
+        [x1-thick, mid - gap]
+      ];
+      const E = [
+        [x0, mid + gap],
+        [x0+thick, mid + gap + thick],
+        [x0+thick, y1 - thick - gap],
+        [x0, y1 - thick]
+      ];
+      const C = [
+        [x1-thick, mid + gap + thick],
+        [x1, mid + gap],
+        [x1, y1 - thick],
+        [x1-thick, y1 - thick - gap]
+      ];
+
+      const shapes = [A,B,C,D,E,F,G];
+      shapes.forEach((pts, i) => g.appendChild(poly(pts, seg[i] ? on : off)));
+      return g;
     }
 
-    function updateScore(amount) {
-      score += amount;
-      scoreDisplay.textContent = score;
-      if (score > highScore) {
-        highScore = score;
-        highScoreDisplay.textContent = highScore;
-        localStorage.setItem('dactyl-high-score', highScore);
-      }
-      delay *= 0.999; // Increase speed by 0.1% every bomb defusal
+    for(let i=0;i<digits;i++){
+      const x = i*(cellW + gap);
+      svgEl.appendChild(digitGroup(s[i], x));
     }
+  }
 
-    function startGame() {
-      delay = 1000; // Reset game speed
-      clearInterval(gameInterval);
-      gameInterval = setInterval(() => {
-        selectRandomBomb();
-        clearInterval(gameInterval);
-        startGame();
-      }, delay);
+  function updateScores(){
+    render7Seg(segCurrent, score);
+    render7Seg(segHigh, highScore);
+  }
+
+  // ---------------- Game ----------------
+  function createGrid() {
+    grid.innerHTML = "";
+    bombs = [];
+    activeBombs = [];
+    lastSpawnIndex = -1;
+
+    for (let i = 0; i < GRID_SIZE; i++) {
+      const div = document.createElement("div");
+      div.className = "bomb";
+      div.dataset.index = i;
+      div.addEventListener("click", () => tapBomb(i));
+      grid.appendChild(div);
+
+      bombs.push({
+        el: div,
+        active: false,
+        timer: null,
+        index: i
+      });
     }
+  }
 
-    function endGame() {
-      clearInterval(gameInterval);
-      litBombs.forEach(index => bombElements[index].classList.add('lit'));
-      gameOverBox.style.display = 'flex';
-    }
-
-    function resetGame() {
-      litBombs.clear();
-      score = 0;
-      delay = 1000;
-      scoreDisplay.textContent = score;
-      bombElements.forEach(bomb => bomb.classList.remove('lit'));
-      gameOverBox.style.display = 'none';
-    }
-
-    restartButton.addEventListener('click', () => {
-      resetGame();
-      startGame();
-      restartButton.textContent = 'Restart';
-    });
-
+  function startGame() {
+    stopGame();
     createGrid();
-  </script>
+
+    // High score depends on current selected difficulty
+    loadHighScoreForSelected();
+
+    score = 0;
+    updateScores();
+
+    running = true;
+    statusText.textContent = "Stay alive.";
+
+    const diff = DIFFICULTY[difficultySelect.value];
+    gameInterval = setInterval(() => activateBomb(diff.fuse), diff.spawn);
+    activateBomb(diff.fuse);
+  }
+
+  function stopGame() {
+    running = false;
+    clearInterval(gameInterval);
+    bombs.forEach(b => clearTimeout(b.timer));
+    activeBombs = [];
+  }
+
+  function activateBomb(fuseTime) {
+    if (!running) return;
+
+    let candidates = bombs.filter(b => !b.active && b.index !== lastSpawnIndex);
+    if (candidates.length === 0) candidates = bombs.filter(b => !b.active);
+    if (candidates.length === 0) return;
+
+    const bomb = candidates[Math.floor(Math.random() * candidates.length)];
+    bomb.active = true;
+    bomb.el.classList.remove("explode");
+    bomb.el.classList.add("active");
+    activeBombs.push(bomb);
+
+    lastSpawnIndex = bomb.index;
+
+    bomb.timer = setTimeout(() => explode(bomb), fuseTime);
+
+    // enforce "only 3 bombs survivable"
+    if (activeBombs.length >= 4) explode(activeBombs[0]);
+  }
+
+  function tapBomb(index) {
+    const bomb = bombs[index];
+    if (!bomb.active || !running) return;
+
+    clearTimeout(bomb.timer);
+    bomb.active = false;
+    bomb.el.classList.remove("active");
+    activeBombs = activeBombs.filter(b => b !== bomb);
+
+    score += 1;
+
+    if (score > highScore) {
+      highScore = score;
+      saveHighScoreForSelected(highScore);
+    }
+    updateScores();
+  }
+
+  function explode(bomb) {
+    if (!bomb.active) return;
+
+    bomb.active = false;
+    clearTimeout(bomb.timer);
+    bomb.el.classList.remove("active");
+    bomb.el.classList.add("explode");
+
+    statusText.textContent = "BOOM.";
+    stopGame();
+  }
+
+  // React to difficulty selection immediately (updates HIGH display)
+  difficultySelect.addEventListener("change", () => {
+    loadHighScoreForSelected();
+    updateScores();
+  });
+
+  btnStart.addEventListener("click", startGame);
+
+  // init
+  createGrid();
+  loadHighScoreForSelected();
+  updateScores();
+</script>
 </body>
 </html>
