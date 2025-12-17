@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dactyl (Recreation)</title>
 
+<!-- Preload bomb images (helps Opera GX + removes first-swap flicker) -->
+<link rel="preload" as="image" href="Bomb%20UnLit.png">
+<link rel="preload" as="image" href="Bomb%20Lit.png">
+
 <style>
   :root{
     --bg:#0a0a0a;
@@ -59,9 +63,7 @@
     align-items:flex-end;
   }
 
-  .scoreBox{
-    text-align:left;
-  }
+  .scoreBox{ text-align:left; }
 
   .label{
     font-size:11px;
@@ -106,11 +108,11 @@
     border:1px solid #1d1d1d;
   }
 
-  /* PNG-based bombs */
+  /* PNG-based bombs (URL-encoded spaces for Opera reliability) */
   .bomb{
     width:100%;
     aspect-ratio:1 / 1;
-    background-image:url("Bomb UnLit.png");
+    background-image:url("Bomb%20UnLit.png");
     background-size:contain;
     background-repeat:no-repeat;
     background-position:center;
@@ -122,11 +124,11 @@
   .bomb:active{ transform:scale(.96); }
 
   .bomb.active{
-    background-image:url("Bomb Lit.png");
+    background-image:url("Bomb%20Lit.png");
   }
 
   .bomb.explode{
-    background-image:url("Bomb Lit.png");
+    background-image:url("Bomb%20Lit.png");
     filter:brightness(1.4);
   }
 
@@ -153,20 +155,13 @@
       gap:10px;
     }
 
-    .scores{
-      justify-content:space-between;
-    }
+    .scores{ justify-content:space-between; }
+    .controls{ justify-content:space-between; }
 
-    .controls{
-      justify-content:space-between;
-    }
-
-    select,button{
-      width:49%;
-    }
+    select,button{ width:49%; }
 
     .seg{
-      width:104px; /* tiny trim for narrow screens */
+      width:104px;
       height:34px;
     }
 
@@ -213,6 +208,12 @@
 </div>
 
 <script>
+  // Extra preload (belt + suspenders; helps when opened as file://)
+  (function preloadImages(){
+    const a = new Image(); a.src = "Bomb%20UnLit.png";
+    const b = new Image(); b.src = "Bomb%20Lit.png";
+  })();
+
   const grid = document.getElementById("grid");
   const statusText = document.getElementById("status");
   const difficultySelect = document.getElementById("difficulty");
@@ -230,10 +231,8 @@
   let running = false;
 
   let score = 0;
-  // per-difficulty high score
   let highScore = 0;
 
-  // Prevent spawning on the immediately previous spawn cell.
   let lastSpawnIndex = -1;
 
   const DIFFICULTY = {
@@ -255,7 +254,7 @@
     localStorage.setItem(hsKey(diff), String(value));
   }
 
-  // ---------------- 7-seg SVG renderer ----------------
+  // 7-seg SVG renderer
   const segMap = {
     "0":[1,1,1,1,1,1,0],
     "1":[0,1,1,0,0,0,0],
@@ -362,7 +361,6 @@
     render7Seg(segHigh, highScore);
   }
 
-  // ---------------- Game ----------------
   function createGrid() {
     grid.innerHTML = "";
     bombs = [];
@@ -376,12 +374,7 @@
       div.addEventListener("click", () => tapBomb(i));
       grid.appendChild(div);
 
-      bombs.push({
-        el: div,
-        active: false,
-        timer: null,
-        index: i
-      });
+      bombs.push({ el: div, active:false, timer:null, index:i });
     }
   }
 
@@ -389,9 +382,7 @@
     stopGame();
     createGrid();
 
-    // High score depends on current selected difficulty
     loadHighScoreForSelected();
-
     score = 0;
     updateScores();
 
@@ -427,7 +418,6 @@
 
     bomb.timer = setTimeout(() => explode(bomb), fuseTime);
 
-    // enforce "only 3 bombs survivable"
     if (activeBombs.length >= 4) explode(activeBombs[0]);
   }
 
@@ -441,7 +431,6 @@
     activeBombs = activeBombs.filter(b => b !== bomb);
 
     score += 1;
-
     if (score > highScore) {
       highScore = score;
       saveHighScoreForSelected(highScore);
@@ -461,7 +450,6 @@
     stopGame();
   }
 
-  // React to difficulty selection immediately (updates HIGH display)
   difficultySelect.addEventListener("change", () => {
     loadHighScoreForSelected();
     updateScores();
@@ -469,7 +457,6 @@
 
   btnStart.addEventListener("click", startGame);
 
-  // init
   createGrid();
   loadHighScoreForSelected();
   updateScores();
