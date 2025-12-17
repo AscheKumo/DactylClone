@@ -243,11 +243,12 @@
 
   // Difficulty includes ramp + caps
   // rampPerPoint: multiplied each score; <1 makes timings shrink.
+  // UPDATED: slowed rampPerPoint values (closer to 1.0)
   const DIFFICULTY = {
-    easy:   { spawnStart: 1200, fuseStart: 3600, spawnMin: 520,  fuseMin: 1600, rampPerPoint: 0.992 },
-    normal: { spawnStart: 900,  fuseStart: 2800, spawnMin: 420,  fuseMin: 1300, rampPerPoint: 0.991 },
-    hard:   { spawnStart: 650,  fuseStart: 2200, spawnMin: 340,  fuseMin: 1050, rampPerPoint: 0.990 },
-    insane: { spawnStart: 500,  fuseStart: 1800, spawnMin: 280,  fuseMin: 900,  rampPerPoint: 0.989 }
+    easy:   { spawnStart: 1200, fuseStart: 3600, spawnMin: 520,  fuseMin: 1600, rampPerPoint: 0.996 },
+    normal: { spawnStart: 900,  fuseStart: 2800, spawnMin: 420,  fuseMin: 1300, rampPerPoint: 0.995 },
+    hard:   { spawnStart: 650,  fuseStart: 2200, spawnMin: 340,  fuseMin: 1050, rampPerPoint: 0.994 },
+    insane: { spawnStart: 500,  fuseStart: 1800, spawnMin: 280,  fuseMin: 900,  rampPerPoint: 0.993 }
   };
 
   function hsKey(diff){ return `dactyl_highscore_${diff}`; }
@@ -381,15 +382,13 @@
       div.className = "bomb";
       div.dataset.index = i;
 
-      // IMPORTANT CHANGE:
       // Defuse on touch-down (pointerdown), not click (touch-up).
       div.addEventListener("pointerdown", (e) => {
-        e.preventDefault(); // prevents delayed/ghost click behaviors
+        e.preventDefault();
         tapBomb(i);
       });
 
       grid.appendChild(div);
-
       bombs.push({ el: div, active:false, timer:null, index:i });
     }
   }
@@ -405,7 +404,7 @@
   // Compute current timings with ramp + caps.
   function getCurrentTimings() {
     const d = DIFFICULTY[difficultySelect.value];
-    const factor = Math.pow(d.rampPerPoint, score); // decreases over time
+    const factor = Math.pow(d.rampPerPoint, score);
     const spawn = Math.max(d.spawnMin, Math.round(d.spawnStart * factor));
     const fuse  = Math.max(d.fuseMin,  Math.round(d.fuseStart  * factor));
     return { spawn, fuse };
@@ -435,7 +434,6 @@
     running = true;
     statusText.textContent = "Stay alive.";
 
-    // Start immediately, then ramp via scheduleNextSpawn()
     const { fuse } = getCurrentTimings();
     activateBomb(fuse);
     scheduleNextSpawn();
